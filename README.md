@@ -21,7 +21,8 @@ level, and fly around:
 
 ![Flight tour flying between places](https://raw.githubusercontent.com/lukaszkolodziejczyk/strava-globe/main/docs/tour.gif)
 
-*The tour taking off: home base → Poznań → Vienna, the first three of 41 stops.*
+*Tour mode mid-journey: Rawai → Ao Nang, each stop card carrying the photos
+taken there — click one for full size.*
 
 | From orbit to city… | …to street level |
 |---|---|
