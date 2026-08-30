@@ -28,6 +28,13 @@ EPSILON_DEG = 5e-5  # RDP tolerance, ~5.5 m
 GAP_SPLIT_M = 500.0  # split a track where consecutive fixes are further apart
 IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp"}  # export media can also hold videos
 THUMB_PX, MEDIUM_PX = 288, 1280
+# App-generated stat cards (training-plan summaries etc.) are synthetic gradients:
+# locally flat almost everywhere and extremely compressible. Real photographs carry
+# sensor noise in nearly every block. A photo is treated as a screenshot only when
+# BOTH signals fire, so real photos are never dropped by one noisy feature.
+FLAT_BLOCK_STD = 2.5
+SCREENSHOT_FLAT_FRAC = 0.45
+SCREENSHOT_MAX_BPP = 0.08
 MON = {m: i + 1 for i, m in enumerate(
     ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"])}
 DATE_RE = re.compile(r"^([A-Za-z]{3}) (\d{1,2}), (\d{4})")
@@ -95,17 +102,37 @@ def photo_captions(export: Export) -> dict[str, str]:
     return {r[0]: r[1] if len(r) > 1 else "" for r in rows[1:] if r}
 
 
-def process_photo(export: Export, rel: str, photos_dir: Path) -> str:
-    """Write t_<stem>.jpg and m_<stem>.jpg thumbnails; return the stem."""
+def flat_fraction(img: Image.Image) -> float:
+    """Fraction of 8x8 blocks with near-zero variance."""
+    g = np.asarray(img.convert("L"), dtype=np.float32)
+    h, w = (g.shape[0] // 8) * 8, (g.shape[1] // 8) * 8
+    if not h or not w:
+        return 0.0
+    blocks = g[:h, :w].reshape(h // 8, 8, w // 8, 8).transpose(0, 2, 1, 3).reshape(-1, 64)
+    return float((blocks.std(axis=1) < FLAT_BLOCK_STD).mean())
+
+
+def process_photo(export: Export, rel: str, photos_dir: Path) -> str | None:
+    """Write t_<stem>.jpg and m_<stem>.jpg thumbnails and return the stem,
+    or return None (removing stale files) for app screenshots."""
+    data = export.read(rel)
     stem = Path(rel).stem
     thumb, medium = photos_dir / f"t_{stem}.jpg", photos_dir / f"m_{stem}.jpg"
-    if thumb.exists() and medium.exists():
-        return stem
-    img = ImageOps.exif_transpose(Image.open(io.BytesIO(export.read(rel)))).convert("RGB")
-    for target, px in ((medium, MEDIUM_PX), (thumb, THUMB_PX)):
+    img = ImageOps.exif_transpose(Image.open(io.BytesIO(data))).convert("RGB")
+
+    small = img.copy()
+    small.thumbnail((THUMB_PX, THUMB_PX))
+    bpp = len(data) / (img.width * img.height)
+    if bpp < SCREENSHOT_MAX_BPP and flat_fraction(small) > SCREENSHOT_FLAT_FRAC:
+        thumb.unlink(missing_ok=True)
+        medium.unlink(missing_ok=True)
+        return None
+
+    if not (thumb.exists() and medium.exists()):
+        small.save(thumb, "JPEG", quality=82)
         scaled = img.copy()
-        scaled.thumbnail((px, px))
-        scaled.save(target, "JPEG", quality=82)
+        scaled.thumbnail((MEDIUM_PX, MEDIUM_PX))
+        scaled.save(medium, "JPEG", quality=82)
     return stem
 
 
@@ -123,7 +150,7 @@ def build(export_path: Path, out: Path) -> None:
     captions = photo_captions(export)
     photos_dir = out.parent / "photos"
     activities, centers, skipped, failed = [], [], 0, []
-    raw_pts = kept_pts = photo_ok = photo_bad = 0
+    raw_pts = kept_pts = photo_ok = photo_bad = photo_screens = 0
     for row in rows[1:]:
         fname = col(row, "Filename")
         if not fname:
@@ -164,7 +191,11 @@ def build(export_path: Path, out: Path) -> None:
                     continue
                 try:
                     photos_dir.mkdir(parents=True, exist_ok=True)
-                    photos.append([process_photo(export, rel, photos_dir), captions.get(rel, "")])
+                    stem = process_photo(export, rel, photos_dir)
+                    if stem is None:
+                        photo_screens += 1
+                        continue
+                    photos.append([stem, captions.get(rel, "")])
                     photo_ok += 1
                 except Exception:
                     photo_bad += 1
@@ -199,8 +230,9 @@ def build(export_path: Path, out: Path) -> None:
     print(f"points: {raw_pts:,} -> {kept_pts:,} after simplification")
     print(f"types:  {types}")
     print(f"total:  {sum(a['km'] for a in activities):,.0f} km")
-    if photo_ok or photo_bad:
-        print(f"photos: {photo_ok} thumbnailed -> {photos_dir}  (failed/skipped: {photo_bad})")
+    if photo_ok or photo_bad or photo_screens:
+        print(f"photos: {photo_ok} thumbnailed -> {photos_dir}  "
+              f"(app screenshots filtered: {photo_screens}, failed: {photo_bad})")
     print(f"wrote:  {out}  ({out.stat().st_size / 1e6:.1f} MB)")
     for fname, err in failed[:10]:
         print(f"  FAILED {fname}: {err}")

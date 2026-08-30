@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "strava-globe"
-version = "0.2.0"
+version = "0.3.0"
 description = "Your entire Strava history as glowing tracks on a realistic 3D Earth — local, private, no API keys"
 readme = "README.md"
 license = "BSD-3-Clause"
