@@ -2,6 +2,8 @@
 
 Your entire Strava history as glowing tracks on a realistic 3D Earth.
 
+![Every activity on one globe](docs/hero.jpg)
+
 Point it at the export zip Strava gives you, and you get a private, local globe
 (CesiumJS + satellite imagery) you can spin, zoom from orbit down to street
 level, and fly around:
@@ -14,6 +16,14 @@ level, and fly around:
 - **Filters** by activity type and year, satellite or street basemap, and an
   idle globe spin until you grab it.
 - **No accounts, no API keys, no upload.** Your tracks never leave your machine.
+
+![Flight tour flying between places](docs/tour.gif)
+
+*The tour taking off: home base → Poznań → Vienna, the first three of 41 stops.*
+
+| From orbit to city… | …to street level |
+|---|---|
+| ![A city's worth of tracks](docs/city.jpg) | ![Runs along a coastline](docs/street.jpg) |
 
 ## Quickstart
 
