@@ -1,0 +1,196 @@
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body, #globe {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #05080d;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+/* ---------- control panel ---------- */
+#panel {
+  position: fixed;
+  top: 16px;
+  left: 16px;
+  width: 288px;
+  padding: 16px;
+  border-radius: 14px;
+  background: rgba(10, 14, 20, 0.72);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  color: #e8edf4;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+  z-index: 10;
+}
+#panel h1 {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+}
+#panel h1::before { content: "🌍 "; }
+#stats {
+  margin-top: 4px;
+  font-size: 12px;
+  line-height: 1.5;
+  color: #9fb0c3;
+}
+#stats b { color: #fc5200; font-weight: 600; }
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 12px;
+}
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  color: #dbe4ee;
+  font-size: 12px;
+  cursor: pointer;
+  user-select: none;
+  transition: opacity 0.15s, background 0.15s;
+}
+.chip .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--c, #999);
+  box-shadow: 0 0 6px var(--c, transparent);
+}
+.chip .n { color: #8fa0b3; }
+.chip.off { opacity: 0.35; }
+.chip:hover { background: rgba(255, 255, 255, 0.12); }
+
+.row {
+  display: flex;
+  gap: 8px;
+  margin-top: 14px;
+}
+.row select, .row button {
+  flex: 1;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.07);
+  color: #e8edf4;
+  font-size: 12px;
+  cursor: pointer;
+}
+.row select:hover, .row button:hover { background: rgba(255, 255, 255, 0.14); }
+.row option { background: #10161f; }
+
+.hint {
+  margin-top: 12px;
+  font-size: 11px;
+  color: #6d7d90;
+}
+
+/* ---------- tooltip ---------- */
+#tooltip {
+  position: fixed;
+  pointer-events: none;
+  max-width: 300px;
+  padding: 8px 11px;
+  border-radius: 10px;
+  background: rgba(8, 12, 18, 0.88);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f2f6fa;
+  font-size: 12.5px;
+  line-height: 1.45;
+  z-index: 20;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.5);
+}
+#tooltip .t-name { font-weight: 650; }
+#tooltip .t-meta { color: #9fb0c3; font-size: 11.5px; }
+
+/* ---------- flight tour card ---------- */
+#tourCard {
+  position: fixed;
+  left: 50%;
+  bottom: 30px;
+  transform: translateX(-50%);
+  min-width: 320px;
+  max-width: 480px;
+  padding: 14px 18px 12px;
+  border-radius: 14px;
+  background: rgba(10, 14, 20, 0.78);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #e8edf4;
+  text-align: center;
+  z-index: 15;
+  box-shadow: 0 10px 36px rgba(0, 0, 0, 0.5);
+}
+.tc-head { font-size: 16px; font-weight: 700; }
+.tc-country { color: #9fb0c3; font-weight: 500; }
+.tc-meta { margin-top: 4px; font-size: 12px; color: #9fb0c3; }
+.tc-types { margin-top: 3px; font-size: 12px; color: #c6d2e0; }
+.tc-controls {
+  margin-top: 10px;
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  align-items: center;
+}
+.tc-controls button {
+  padding: 4px 12px;
+  border-radius: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: rgba(255, 255, 255, 0.07);
+  color: #e8edf4;
+  font-size: 13px;
+  cursor: pointer;
+}
+.tc-controls button:hover { background: rgba(255, 255, 255, 0.15); }
+.tc-progress { font-size: 11.5px; color: #8fa0b3; margin: 0 6px; min-width: 44px; }
+
+/* ---------- loading ---------- */
+#loading {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  background: #05080d;
+  color: #9fb0c3;
+  font-size: 13px;
+  z-index: 100;
+  transition: opacity 0.6s;
+  text-align: center;
+  line-height: 1.9;
+  padding: 0 24px;
+}
+#loading code {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 2px 7px;
+  font-size: 12px;
+  color: #ffb38a;
+}
+#loading.done { opacity: 0; pointer-events: none; }
+.spinner {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 3px solid rgba(255, 255, 255, 0.12);
+  border-top-color: #fc5200;
+  animation: spin 0.9s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* Cesium chrome we keep minimal */
+.cesium-viewer-bottom { opacity: 0.55; }
+.cesium-widget-credits { font-size: 10px !important; }

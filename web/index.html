@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Strava Globe</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🌍</text></svg>">
+  <script>window.CESIUM_BASE_URL = 'https://cdn.jsdelivr.net/npm/cesium@1.131.0/Build/Cesium/';</script>
+  <script src="https://cdn.jsdelivr.net/npm/cesium@1.131.0/Build/Cesium/Cesium.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/cesium@1.131.0/Build/Cesium/Widgets/widgets.css">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="globe"></div>
+
+  <aside id="panel">
+    <header>
+      <h1>Strava Globe</h1>
+      <p id="stats">Loading…</p>
+    </header>
+    <div class="chips" id="typeChips"></div>
+    <div class="chips" id="yearChips"></div>
+    <div class="row">
+      <select id="imagery" title="Base imagery">
+        <option value="esri">Satellite</option>
+        <option value="osm">Streets</option>
+      </select>
+      <button id="home" title="Reset view">⌂ Home</button>
+      <button id="tour" title="Fly through everywhere you've been, in order">▶ Tour</button>
+    </div>
+    <p class="hint">drag to spin · scroll to zoom · hover a track · click it to fly there · ▶ Tour replays your travels</p>
+  </aside>
+
+  <div id="tooltip" hidden></div>
+
+  <div id="tourCard" hidden>
+    <div id="tcInfo"></div>
+    <div class="tc-controls">
+      <button id="tcPrev" title="Previous stop">⏮</button>
+      <button id="tcPause" title="Pause">⏸</button>
+      <button id="tcNext" title="Next stop">⏭</button>
+      <span id="tcProgress" class="tc-progress"></span>
+      <button id="tcExit" title="End tour (Esc)">✕</button>
+    </div>
+  </div>
+
+  <div id="loading">
+    <div class="spinner"></div>
+    <div id="loadmsg">Loading activities…</div>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>
