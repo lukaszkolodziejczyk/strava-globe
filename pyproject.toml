@@ -1,0 +1,39 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "strava-globe"
+version = "0.1.0"
+description = "Your entire Strava history as glowing tracks on a realistic 3D Earth — local, private, no API keys"
+readme = "README.md"
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+authors = [{ name = "Lukasz Kolodziejczyk" }]
+keywords = ["strava", "gps", "globe", "map", "cesium", "visualization", "running", "fit", "gpx"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Web Environment",
+    "Intended Audience :: End Users/Desktop",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Visualization",
+]
+dependencies = [
+    "fitfast>=0.1.0",
+    "numpy",
+    "simplification",
+    "reverse-geocoder",
+    "platformdirs",
+]
+
+[project.scripts]
+strava-globe = "strava_globe.cli:main"
+
+[project.urls]
+Repository = "https://github.com/lukaszkolodziejczyk/strava-globe"
+Issues = "https://github.com/lukaszkolodziejczyk/strava-globe/issues"
+
+[tool.hatch.build.targets.sdist]
+exclude = ["docs", ".github", ".claude"]

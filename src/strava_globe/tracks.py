@@ -1,15 +1,9 @@
-# /// script
-# requires-python = ">=3.11"
-# dependencies = ["fitfast>=0.1.0", "numpy", "simplification", "reverse-geocoder"]
-# ///
-"""Build web/data/activities.json from a Strava export (directory or .zip).
-
-Usage:
-    uv run build_tracks.py <export_dir_or_zip> [out_json]
+"""Build the globe's track data from a Strava export (directory or .zip).
 
 Reads activities.csv for metadata, decodes every referenced FIT/GPX track
 (fitfast for FIT), splits tracks at GPS dropouts, simplifies each segment
-with Ramer-Douglas-Peucker, and writes one compact JSON the globe app loads.
+with Ramer-Douglas-Peucker, tags each activity with its nearest city
+(offline GeoNames lookup), and writes one compact JSON the web app loads.
 """
 
 from __future__ import annotations
@@ -19,7 +13,6 @@ import gzip
 import io
 import json
 import re
-import sys
 import xml.etree.ElementTree as ET
 import zipfile
 from pathlib import Path
@@ -90,9 +83,9 @@ def segments(coords: np.ndarray) -> list[np.ndarray]:
     return [s for s in np.split(coords, breaks + 1) if len(s) >= 2]
 
 
-def main() -> None:
-    export = Export(Path(sys.argv[1]).expanduser())
-    out = Path(sys.argv[2] if len(sys.argv) > 2 else Path(__file__).parent / "web/data/activities.json")
+def build(export_path: Path, out: Path) -> None:
+    """Process the export at export_path and write the track JSON to out."""
+    export = Export(export_path)
 
     rows = list(csv.reader(io.StringIO(export.read("activities.csv").decode("utf-8"))))
     hdr = rows[0]
@@ -158,7 +151,7 @@ def main() -> None:
     with out.open("w", encoding="utf-8") as f:
         json.dump({"activities": activities}, f, ensure_ascii=False, separators=(",", ":"))
 
-    types = {}
+    types: dict[str, int] = {}
     for a in activities:
         types[a["t"]] = types.get(a["t"], 0) + 1
     print(f"tracks: {len(activities)}  (skipped, no GPS/no file: {skipped}, failed: {len(failed)})")
@@ -168,7 +161,3 @@ def main() -> None:
     print(f"wrote:  {out}  ({out.stat().st_size / 1e6:.1f} MB)")
     for fname, err in failed[:10]:
         print(f"  FAILED {fname}: {err}")
-
-
-if __name__ == "__main__":
-    main()

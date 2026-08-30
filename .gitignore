@@ -1,9 +1,7 @@
-# Personal GPS data — never commit
-web/data/*.json
-
-__pycache__/
-*.pyc
+dist/
 .venv
 uv.lock
+__pycache__/
+*.pyc
 .DS_Store
 .claude/
