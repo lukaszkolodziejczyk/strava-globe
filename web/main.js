@@ -430,6 +430,7 @@ document.addEventListener('keydown', (e) => {
   applyFilters();
   document.getElementById('loading').classList.add('done');
 })().catch((err) => {
+  document.querySelector('.spinner')?.remove();
   document.getElementById('loadmsg').innerHTML =
     'No activity data yet.<br>' +
     'Build it from your Strava export: <code>uv run build_tracks.py path/to/export.zip</code>, then reload.';
