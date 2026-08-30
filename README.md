@@ -13,6 +13,8 @@ level, and fly around:
 - **▶ Tour mode**: your activities are clustered into places, named via offline
   reverse geocoding, ordered by first visit — and the camera flies through your
   travel history stop by stop, with a card per place and a closing summary.
+- **Your photos, where you took them**: pictures attached to activities show up
+  on the activity card and on tour stops — click one for a full-size lightbox.
 - **Filters** by activity type and year, satellite or street basemap, and an
   idle globe spin until you grab it.
 - **No accounts, no API keys, no upload.** Your tracks never leave your machine.
@@ -58,6 +60,8 @@ export — zip or extracted folder — then for every activity file:
   [`simplification`](https://pypi.org/project/simplification/)),
 - tags the activity with its nearest city and country — offline GeoNames
   lookup via [`reverse-geocoder`](https://pypi.org/project/reverse_geocoder/),
+- thumbnails any photos attached to the activity (EXIF-rotated, two sizes,
+  Pillow) into your local data directory,
 - and writes one compact `activities.json` (~1.7 MB for 725 tracks /
   1.9 M raw GPS points).
 

@@ -184,10 +184,69 @@ handler.setInputAction((movement) => {
 
 handler.setInputAction((click) => {
   const picked = scene.pick(click.position);
-  if (!picked || !Number.isInteger(picked.id)) return;
+  if (!picked || !Number.isInteger(picked.id)) { hideActivityCard(); return; }
   setHover(null);
-  flyToActivity(records[picked.id]);
+  selectActivity(picked.id);
 }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+/* ---------- activity card & photo lightbox ---------- */
+const actCard = document.getElementById('actCard');
+const lightbox = document.getElementById('lightbox');
+
+function selectActivity(index) {
+  const rec = records[index];
+  flyToActivity(rec);
+  showActivityCard(rec);
+}
+window.selectActivity = selectActivity;   // debug handle
+
+function showActivityCard(rec) {
+  const { a } = rec;
+  let html =
+    `<button class="card-close" id="acClose" title="Close">✕</button>` +
+    `<div class="tc-head">${styleFor(a.t).icon} ${escapeHtml(a.n)}</div>` +
+    `<div class="tc-meta">${a.d} · ${a.km.toFixed(1)} km${a.c ? ' · ' + escapeHtml(a.c) : ''}</div>`;
+  if (a.p?.length) {
+    html += `<div class="photo-strip">` + a.p.map(([stem, cap], i) =>
+      `<img src="data/photos/t_${stem}.jpg" loading="lazy" data-i="${i}" alt="${escapeHtml(cap)}">`
+    ).join('') + `</div>`;
+  }
+  actCard.innerHTML = html;
+  actCard.hidden = false;
+  document.getElementById('acClose').addEventListener('click', hideActivityCard);
+  for (const img of actCard.querySelectorAll('.photo-strip img')) {
+    img.addEventListener('click', () => openLightbox(a.p, Number(img.dataset.i)));
+  }
+}
+function hideActivityCard() { actCard.hidden = true; }
+
+const lb = { set: null, i: 0 };
+function openLightbox(set, i) {
+  lb.set = set;
+  lb.i = i;
+  if (tour.active && !tour.paused) toggleTourPause();
+  renderLightbox();
+  lightbox.hidden = false;
+}
+function renderLightbox() {
+  const [stem, cap] = lb.set[lb.i];
+  document.getElementById('lbImg').src = `data/photos/m_${stem}.jpg`;
+  document.getElementById('lbCap').textContent = cap || '';
+  document.getElementById('lbCount').textContent = lb.set.length > 1 ? `${lb.i + 1} / ${lb.set.length}` : '';
+  document.getElementById('lbPrev').hidden = document.getElementById('lbNext').hidden = lb.set.length < 2;
+}
+function lbStep(dir) {
+  lb.i = (lb.i + dir + lb.set.length) % lb.set.length;
+  renderLightbox();
+}
+function closeLightbox() {
+  lightbox.hidden = true;
+  document.getElementById('lbImg').src = '';
+}
+document.getElementById('lbClose').addEventListener('click', closeLightbox);
+document.getElementById('lbPrev').addEventListener('click', () => lbStep(-1));
+document.getElementById('lbNext').addEventListener('click', () => lbStep(1));
+lightbox.addEventListener('click', (e) => { if (e.target === lightbox) closeLightbox(); });
 
 function flyToActivity(rec) {
   stopSpin();
@@ -305,6 +364,7 @@ function startTour() {
   if (!records.length || tour.active) return;
   stopSpin();
   setHover(null);
+  hideActivityCard();
   if (!tour.stops.length) tour.stops = buildTourStops();
   tour.active = true;
   tour.paused = false;
@@ -354,11 +414,27 @@ function renderStopCard(cl, index) {
   const period = cl.first.slice(0, 7) === cl.last.slice(0, 7)
     ? fmtYM(cl.first) : `${fmtYM(cl.first)} → ${fmtYM(cl.last)}`;
   const types = cl.types.map(([t, n]) => `${styleFor(t).icon} ${n}`).join(' · ');
+
+  // Up to three photos, spread across the stay
+  const withPhotos = cl.recs.filter((r) => r.a.p?.length);
+  let strip = '';
+  if (withPhotos.length) {
+    const step = Math.max(1, Math.floor(withPhotos.length / 3));
+    const picks = [];
+    for (let i = 0; i < withPhotos.length && picks.length < 3; i += step) picks.push(withPhotos[i]);
+    strip = `<div class="photo-strip">` + picks.map((r) =>
+      `<img src="data/photos/t_${r.a.p[0][0]}.jpg" loading="lazy" data-ai="${records.indexOf(r)}" alt="">`
+    ).join('') + `</div>`;
+  }
+
   tcInfo.innerHTML =
     `<div class="tc-head">📍 ${escapeHtml(cl.city)}<span class="tc-country"> · ${escapeHtml(cl.country)}</span></div>` +
     `<div class="tc-meta">${period} · ${cl.recs.length} ${cl.recs.length === 1 ? 'activity' : 'activities'} · ` +
     `${Math.round(cl.km).toLocaleString('en')} km</div>` +
-    `<div class="tc-types">${types}</div>`;
+    `<div class="tc-types">${types}</div>` + strip;
+  for (const img of tcInfo.querySelectorAll('.photo-strip img')) {
+    img.addEventListener('click', () => openLightbox(records[Number(img.dataset.ai)].a.p, 0));
+  }
   tcProgress.textContent = `${index + 1} / ${tour.stops.length}`;
   tourCard.hidden = false;
 }
@@ -394,8 +470,15 @@ document.getElementById('tcPause').addEventListener('click', toggleTourPause);
 document.getElementById('tcExit').addEventListener('click', () => exitTour());
 document.addEventListener('keydown', (e) => {
   if (e.target.tagName === 'SELECT' || e.target.tagName === 'INPUT') return;
+  if (!lightbox.hidden) {
+    if (e.key === 'Escape') closeLightbox();
+    else if (e.key === 'ArrowRight') lbStep(1);
+    else if (e.key === 'ArrowLeft') lbStep(-1);
+    return;
+  }
   if (!tour.active) {
     if (e.key === 't' || e.key === 'T') startTour();
+    else if (e.key === 'Escape') hideActivityCard();
     return;
   }
   if (e.key === 'Escape') exitTour();

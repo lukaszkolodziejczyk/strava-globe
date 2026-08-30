@@ -3,7 +3,8 @@
 Reads activities.csv for metadata, decodes every referenced FIT/GPX track
 (fitfast for FIT), splits tracks at GPS dropouts, simplifies each segment
 with Ramer-Douglas-Peucker, tags each activity with its nearest city
-(offline GeoNames lookup), and writes one compact JSON the web app loads.
+(offline GeoNames lookup), extracts activity photos as local thumbnails,
+and writes one compact JSON the web app loads.
 """
 
 from __future__ import annotations
@@ -20,10 +21,13 @@ from pathlib import Path
 import fitfast
 import numpy as np
 import reverse_geocoder
+from PIL import Image, ImageOps
 from simplification.cutil import simplify_coords
 
 EPSILON_DEG = 5e-5  # RDP tolerance, ~5.5 m
 GAP_SPLIT_M = 500.0  # split a track where consecutive fixes are further apart
+IMAGE_EXTS = {".jpg", ".jpeg", ".png", ".webp"}  # export media can also hold videos
+THUMB_PX, MEDIUM_PX = 288, 1280
 MON = {m: i + 1 for i, m in enumerate(
     ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"])}
 DATE_RE = re.compile(r"^([A-Za-z]{3}) (\d{1,2}), (\d{4})")
@@ -83,6 +87,28 @@ def segments(coords: np.ndarray) -> list[np.ndarray]:
     return [s for s in np.split(coords, breaks + 1) if len(s) >= 2]
 
 
+def photo_captions(export: Export) -> dict[str, str]:
+    try:
+        rows = list(csv.reader(io.StringIO(export.read("media.csv").decode("utf-8"))))
+    except Exception:
+        return {}
+    return {r[0]: r[1] if len(r) > 1 else "" for r in rows[1:] if r}
+
+
+def process_photo(export: Export, rel: str, photos_dir: Path) -> str:
+    """Write t_<stem>.jpg and m_<stem>.jpg thumbnails; return the stem."""
+    stem = Path(rel).stem
+    thumb, medium = photos_dir / f"t_{stem}.jpg", photos_dir / f"m_{stem}.jpg"
+    if thumb.exists() and medium.exists():
+        return stem
+    img = ImageOps.exif_transpose(Image.open(io.BytesIO(export.read(rel)))).convert("RGB")
+    for target, px in ((medium, MEDIUM_PX), (thumb, THUMB_PX)):
+        scaled = img.copy()
+        scaled.thumbnail((px, px))
+        scaled.save(target, "JPEG", quality=82)
+    return stem
+
+
 def build(export_path: Path, out: Path) -> None:
     """Process the export at export_path and write the track JSON to out."""
     export = Export(export_path)
@@ -94,8 +120,10 @@ def build(export_path: Path, out: Path) -> None:
         idx.setdefault(name, i)  # first occurrence wins (first Distance column is km)
     col = lambda row, name: row[idx[name]] if idx[name] < len(row) else ""
 
+    captions = photo_captions(export)
+    photos_dir = out.parent / "photos"
     activities, centers, skipped, failed = [], [], 0, []
-    raw_pts = kept_pts = 0
+    raw_pts = kept_pts = photo_ok = photo_bad = 0
     for row in rows[1:]:
         fname = col(row, "Filename")
         if not fname:
@@ -129,6 +157,18 @@ def build(export_path: Path, out: Path) -> None:
             skipped += 1
             continue
 
+        photos = []
+        if "Media" in idx:
+            for rel in filter(None, col(row, "Media").split("|")):
+                if Path(rel).suffix.lower() not in IMAGE_EXTS:
+                    continue
+                try:
+                    photos_dir.mkdir(parents=True, exist_ok=True)
+                    photos.append([process_photo(export, rel, photos_dir), captions.get(rel, "")])
+                    photo_ok += 1
+                except Exception:
+                    photo_bad += 1
+
         date, year = parse_date(col(row, "Activity Date"))
         centers.append((float(np.median(coords[:, 1])), float(np.median(coords[:, 0]))))
         activities.append({
@@ -138,6 +178,7 @@ def build(export_path: Path, out: Path) -> None:
             "y": year,
             "km": round(km, 2),
             "s": segs,
+            **({"p": photos} if photos else {}),
         })
 
     # Offline reverse geocoding (GeoNames): nearest city name + country per activity
@@ -158,6 +199,8 @@ def build(export_path: Path, out: Path) -> None:
     print(f"points: {raw_pts:,} -> {kept_pts:,} after simplification")
     print(f"types:  {types}")
     print(f"total:  {sum(a['km'] for a in activities):,.0f} km")
+    if photo_ok or photo_bad:
+        print(f"photos: {photo_ok} thumbnailed -> {photos_dir}  (failed/skipped: {photo_bad})")
     print(f"wrote:  {out}  ({out.stat().st_size / 1e6:.1f} MB)")
     for fname, err in failed[:10]:
         print(f"  FAILED {fname}: {err}")

@@ -7,6 +7,7 @@ from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 from importlib.resources import as_file, files
 from pathlib import Path
 from typing import Callable
+from urllib.parse import unquote
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -18,8 +19,12 @@ class Handler(SimpleHTTPRequestHandler):
 
     def translate_path(self, path: str) -> str:
         clean = path.split("?", 1)[0].split("#", 1)[0]
-        if clean == "/data/activities.json" and self.data_file is not None:
-            return str(self.data_file)
+        if self.data_file is not None:
+            if clean == "/data/activities.json":
+                return str(self.data_file)
+            if clean.startswith("/data/photos/"):
+                name = Path(unquote(clean)).name  # basename only: no traversal
+                return str(self.data_file.parent / "photos" / name)
         return super().translate_path(path)
 
     def log_message(self, *args):
